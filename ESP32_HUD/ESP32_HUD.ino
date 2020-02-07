@@ -3,10 +3,12 @@
 #include <WiFiAP.h>
 #include "BluetoothSerial.h"
 #include "ELMduino.h"
+#include "FireTimer.h"
 
 
 WiFiServer server(80);
 BluetoothSerial SerialBT;
+FireTimer sampleTimer;
 
 
 #define DEBUG_PORT Serial
@@ -164,6 +166,9 @@ uint64_t previousTime = currentTime;
 
 void setup()
 {
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH);
+  
   DEBUG_PORT.begin(115200);
   ELM_PORT.begin("ESP32test", true);
   
@@ -173,21 +178,24 @@ void setup()
     while(1);
   }
 
-  pinMode(13, OUTPUT);
-  digitalWrite(13, HIGH);
-
   WiFi.softAP(ssid);
   IPAddress myIP = WiFi.softAPIP();
   server.begin();
 
-  // initialize all LEDs in display
+  sampleTimer.begin(SAMPLE_PERIOD);
+
   setupLEDs();
 
   // wait a bit for the ELM327 to come online
   delay(2000);
 
-  // connect to ELM327
   myELM327.begin(ELM_PORT);
+
+  while(!myELM327.connected)
+  {
+    myELM327.initializeELM();
+    delay(100);
+  }
 }
 
 
@@ -196,18 +204,15 @@ void setup()
 void loop()
 {
   // only query the ELM327 every so often
-  currentTime = millis();
-  if((currentTime - previousTime) >= SAMPLE_PERIOD)
+  if(sampleTimer.fire())
   {
-    previousTime += SAMPLE_PERIOD;
-
     switch(state)
     {
       case get_rpm:
       {
         float tempRPM = myELM327.rpm();
         
-        if(myELM327.status == SUCCESS)
+        if(myELM327.status == ELM_SUCCESS)
         {
           rpm = tempRPM;
           updateLEDs();
@@ -226,7 +231,7 @@ void loop()
       {
         float tempMPH = myELM327.mph();
         
-        if(myELM327.status == SUCCESS)
+        if(myELM327.status == ELM_SUCCESS)
         {
           speed_mph = tempMPH;
           updateLEDs();
@@ -244,7 +249,7 @@ void loop()
   }
 
   // extra processing here:
-  serverProcessing()
+  serverProcessing();
 }
 
 
@@ -400,3 +405,6 @@ void updateRpmDisp(uint16_t rpm)
       digitalWrite(rpm_array[i], HIGH);
   }
 }
+
+
+
