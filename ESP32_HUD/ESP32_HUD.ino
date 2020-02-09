@@ -6,6 +6,10 @@
 #include "FireTimer.h"
 
 
+
+
+const char MAIN_page[] PROGMEM = "<!DOCTYPE html>\n<html>\n<style>\n.card{\n    max-width: 400px;\n     min-height: 250px;\n     background: #02b875;\n     padding: 30px;\n     box-sizing: border-box;\n     color: #FFF;\n     margin:20px;\n     box-shadow: 0px 2px 18px -4px rgba(0,0,0,0.75);\n}\n</style>\n\n<body>\n<div class=\"card\">\n  <h4>The ESP32 Update web page without refresh</h4><br>\n  <h1>Sensor Value: <span id=\"ADCValue\">0</span></h1><br>\n</div>\n</body>\n\n<script>\nsetInterval(function() {\n  // Call a function repetatively with 0.1 Second interval\n  getData();\n}, 100); //100mSeconds update rate\n\nfunction getData() {\n  var xhttp = new XMLHttpRequest();\n  xhttp.onreadystatechange = function() {\n    if (this.readyState == 4 && this.status == 200) {\n      document.getElementById(\"ADCValue\").innerHTML =\n      this.responseText;\n    }\n  };\n  xhttp.open(\"GET\", \"readADC\", true);\n  xhttp.send();\n}\n</script>\n</html>";
+
 WiFiServer server(80);
 BluetoothSerial SerialBT;
 FireTimer sampleTimer;
@@ -180,6 +184,7 @@ void setup()
 
   WiFi.softAP(ssid);
   IPAddress myIP = WiFi.softAPIP();
+  DEBUG_PORT.println(myIP);
   server.begin();
 
   sampleTimer.begin(SAMPLE_PERIOD);
@@ -257,11 +262,13 @@ void loop()
 
 void serverProcessing()
 {
-  WiFiClient client = server.available();   // listen for incoming clients
+  bool main = false;
+  bool adc = false;
+  
+  WiFiClient client = server.available();
 
   if (client)
   {
-    Serial.println("New Client.");
     String currentLine = "";
     
     while (client.connected())
@@ -269,40 +276,61 @@ void serverProcessing()
       if (client.available())
       {
         char c = client.read();
-        Serial.write(c);
+        //Serial.write(c);
+
+        if (currentLine.endsWith("GET / HTTP"))
+          main = true;
+        else if (currentLine.endsWith("GET /readADC HTTP"))
+          adc = true;
         
         if (c == '\n')
         {
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0)
+          if (!currentLine.length())
           {
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println();
-
-            client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
-            client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
-            client.println();
-            
-            break;
+            if (main)
+            {
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-type:text/html");
+              client.println();
+        
+              client.print(MAIN_page);
+              client.println();
+      
+              main = false;
+              break;
+            }
+            else if (adc)
+            {
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-type:text/html");
+              client.println();
+        
+              client.println(random(0, 1023));
+              client.println();
+      
+              adc = false;
+              break;
+            }
+            else
+            {
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-type:text/html");
+              client.println();
+        
+              client.print(MAIN_page);
+              client.println();
+              break;
+            }
           }
           else
             currentLine = "";
         }
         else if (c != '\r')
           currentLine += c;
-
-        if (currentLine.endsWith("GET /H"))
-          digitalWrite(LED_BUILTIN, HIGH);
-          
-        if (currentLine.endsWith("GET /L"))
-          digitalWrite(LED_BUILTIN, LOW);
       }
     }
-    
+
     client.stop();
-    Serial.println("Client Disconnected.");
   }
 }
 
@@ -405,6 +433,3 @@ void updateRpmDisp(uint16_t rpm)
       digitalWrite(rpm_array[i], HIGH);
   }
 }
-
-
-
