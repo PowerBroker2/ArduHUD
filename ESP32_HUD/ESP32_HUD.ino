@@ -31,21 +31,21 @@ const uint8_t  ONES_PLACE_START_PIN = 4;
 const uint8_t  BAR_START_PIN        = 2;
 
 const uint8_t speed_led_pin_array[2][7] = { //--------- one's place
-                                           {23,  // A
-                                            24,  // B
-                                            25,  // C
-                                            26,  // D
-                                            27,  // E
-                                            28,  // F
-                                            36}, // G
+                                           {6,   // A
+                                            7,   // B
+                                            8,   // C
+                                            15,  // D
+                                            2,   // E
+                                            0,   // F
+                                            4},  // G
                                             //--------- ten's place
-                                           {29,  // A
-                                            30,  // B
-                                            31,  // C
-                                            32,  // D
-                                            33,  // E
-                                            34,  // F
-                                            35}  // G
+                                           {16,  // A
+                                            17,  // B
+                                            21,  // C
+                                            3,   // D
+                                            1,   // E
+                                            22,  // F
+                                            32}  // G
                                           };
 // 1 lit - 0 off
 const uint8_t seven_seg_pix_map[11][7] = { //--------- 0
@@ -137,16 +137,16 @@ const uint8_t seven_seg_pix_map[11][7] = { //--------- 0
                                            0,  // F
                                            0}, // G
                                          };
-const uint8_t rpm_array[10] = {39,  // 1 (LED #) - Fully left in HUD - Green
-                               14,  // 2
-                               15,  // 3
-                               16,  // 4
-                               17,  // 5
-                               18,  // 6
-                               19,  // 7
-                               20,  // 8
-                               21,  // 9
-                               22}; // 10 - Fully right in HUD - Red
+const uint8_t rpm_array[10] = {11,  // 1 (LED #) - Fully left in HUD - Green
+                               10,  // 2
+                               9,   // 3
+                               13,  // 4
+                               12,  // 5
+                               14,  // 6
+                               27,  // 7
+                               26,  // 8
+                               25,  // 9
+                               33}; // 10 - Fully right in HUD - Red
 
 
 
