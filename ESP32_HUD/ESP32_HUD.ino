@@ -4,7 +4,6 @@
 #include "BluetoothSerial.h"
 #include "SerialTransfer.h"
 #include "ELMduino.h"
-#include "FireTimer.h"
 
 
 BluetoothSerial SerialBT;
