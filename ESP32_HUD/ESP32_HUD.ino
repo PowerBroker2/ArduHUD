@@ -2,178 +2,44 @@
 #include <WiFiClient.h>
 #include <WiFiAP.h>
 #include "BluetoothSerial.h"
+#include "SerialTransfer.h"
 #include "ELMduino.h"
 #include "FireTimer.h"
 
 
-
-
-const char MAIN_page[] PROGMEM = "<!DOCTYPE html>\n<html>\n<style>\n.card{\n    max-width: 400px;\n     min-height: 250px;\n     background: #02b875;\n     padding: 30px;\n     box-sizing: border-box;\n     color: #FFF;\n     margin:20px;\n     box-shadow: 0px 2px 18px -4px rgba(0,0,0,0.75);\n}\n</style>\n\n<body>\n<div class=\"card\">\n  <h4>The ESP32 Update web page without refresh</h4><br>\n  <h1>Sensor Value: <span id=\"ADCValue\">0</span></h1><br>\n</div>\n</body>\n\n<script>\nsetInterval(function() {\n  // Call a function repetatively with 0.1 Second interval\n  getData();\n}, 100); //100mSeconds update rate\n\nfunction getData() {\n  var xhttp = new XMLHttpRequest();\n  xhttp.onreadystatechange = function() {\n    if (this.readyState == 4 && this.status == 200) {\n      document.getElementById(\"ADCValue\").innerHTML =\n      this.responseText;\n    }\n  };\n  xhttp.open(\"GET\", \"readADC\", true);\n  xhttp.send();\n}\n</script>\n</html>";
-
-WiFiServer server(80);
 BluetoothSerial SerialBT;
-FireTimer sampleTimer;
-
-
-#define DEBUG_PORT Serial
-#define ELM_PORT   SerialBT
-
-
+#define DEBUG_PORT      Serial
+#define LED_DRIVER_PORT Serial2
+#define ELM_PORT        SerialBT
 
 
 const char *ssid = "HUDuino";
-
-const uint16_t MIN_RPM              = 700;
-const uint16_t MAX_RPM              = 3500;
-const uint8_t  SAMPLE_PERIOD        = 100;
-const uint8_t  TENS_PLACE_START_PIN = 3;
-const uint8_t  ONES_PLACE_START_PIN = 4;
-const uint8_t  BAR_START_PIN        = 2;
-
-const uint8_t speed_led_pin_array[2][7] = { //--------- one's place
-                                           {6,   // A
-                                            7,   // B
-                                            8,   // C
-                                            15,  // D
-                                            2,   // E
-                                            0,   // F
-                                            4},  // G
-                                            //--------- ten's place
-                                           {16,  // A
-                                            17,  // B
-                                            21,  // C
-                                            3,   // D
-                                            1,   // E
-                                            22,  // F
-                                            32}  // G
-                                          };
-// 1 lit - 0 off
-const uint8_t seven_seg_pix_map[11][7] = { //--------- 0
-                                          {1,  // A
-                                           1,  // B
-                                           1,  // C
-                                           1,  // D
-                                           1,  // E
-                                           1,  // F
-                                           0}, // G
-                                           //--------- 1
-                                          {0,  // A
-                                           0,  // B
-                                           0,  // C
-                                           0,  // D
-                                           1,  // E
-                                           1,  // F
-                                           0}, // G
-                                           //--------- 2
-                                          {1,  // A
-                                           0,  // B
-                                           1,  // C
-                                           1,  // D
-                                           0,  // E
-                                           1,  // F
-                                           1}, // G
-                                           //--------- 3
-                                          {1,  // A
-                                           0,  // B
-                                           0,  // C
-                                           1,  // D
-                                           1,  // E
-                                           1,  // F
-                                           1}, // G
-                                           //--------- 4
-                                          {0,  // A
-                                           1,  // B
-                                           0,  // C
-                                           0,  // D
-                                           1,  // E
-                                           1,  // F
-                                           1}, // G
-                                           //--------- 5
-                                          {1,  // A
-                                           1,  // B
-                                           0,  // C
-                                           1,  // D
-                                           1,  // E
-                                           0,  // F
-                                           1}, // G
-                                           //--------- 6
-                                          {1,  // A
-                                           1,  // B
-                                           1,  // C
-                                           1,  // D
-                                           1,  // E
-                                           0,  // F
-                                           1}, // G
-                                           //--------- 7
-                                          {1,  // A
-                                           0,  // B
-                                           0,  // C
-                                           0,  // D
-                                           1,  // E
-                                           1,  // F
-                                           0}, // G
-                                           //--------- 8
-                                          {1,  // A
-                                           1,  // B
-                                           1,  // C
-                                           1,  // D
-                                           1,  // E
-                                           1,  // F
-                                           1}, // G
-                                           //--------- 9
-                                          {1,  // A
-                                           1,  // B
-                                           0,  // C
-                                           1,  // D
-                                           1,  // E
-                                           1,  // F
-                                           1}, // G
-                                           //--------- blank
-                                          {0,  // A
-                                           0,  // B
-                                           0,  // C
-                                           0,  // D
-                                           0,  // E
-                                           0,  // F
-                                           0}, // G
-                                         };
-const uint8_t rpm_array[10] = {11,  // 1 (LED #) - Fully left in HUD - Green
-                               10,  // 2
-                               9,   // 3
-                               13,  // 4
-                               12,  // 5
-                               14,  // 6
-                               27,  // 7
-                               26,  // 8
-                               25,  // 9
-                               33}; // 10 - Fully right in HUD - Red
+const char MAIN_page[] PROGMEM = "<!DOCTYPE html>\n<html>\n<style>\n.card{\n    max-width: 400px;\n     min-height: 250px;\n     background: #02b875;\n     padding: 30px;\n     box-sizing: border-box;\n     color: #FFF;\n     margin:20px;\n     box-shadow: 0px 2px 18px -4px rgba(0,0,0,0.75);\n}\n</style>\n\n<body>\n<div class=\"card\">\n  <h4>The ESP32 Update web page without refresh</h4><br>\n  <h1>Sensor Value: <span id=\"ADCValue\">0</span></h1><br>\n</div>\n</body>\n\n<script>\nsetInterval(function() {\n  // Call a function repetatively with 0.1 Second interval\n  getData();\n}, 100); //100mSeconds update rate\n\nfunction getData() {\n  var xhttp = new XMLHttpRequest();\n  xhttp.onreadystatechange = function() {\n    if (this.readyState == 4 && this.status == 200) {\n      document.getElementById(\"ADCValue\").innerHTML =\n      this.responseText;\n    }\n  };\n  xhttp.open(\"GET\", \"readADC\", true);\n  xhttp.send();\n}\n</script>\n</html>";
 
 
-
-
+SerialTransfer myTransfer;
+WiFiServer server(80);
 ELM327 myELM327;
+
 
 enum fsm{get_speed, 
          get_rpm};
 fsm state = get_rpm;
 
 
-
-
-float    rpm;
-float    speed_mph;
-uint64_t currentTime  = millis();
-uint64_t previousTime = currentTime;
-
-
+struct STRUCT {
+  uint32_t rpm;
+  float mph;
+} carTelem;
 
 
 void setup()
 {
-  pinMode(13, OUTPUT);
-  digitalWrite(13, HIGH);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
   
   DEBUG_PORT.begin(115200);
+  LED_DRIVER_PORT.begin(115200);
   ELM_PORT.begin("ESP32test", true);
   
   if (!ELM_PORT.connect("OBDII"))
@@ -186,78 +52,55 @@ void setup()
   IPAddress myIP = WiFi.softAPIP();
   DEBUG_PORT.println(myIP);
   server.begin();
-
-  sampleTimer.begin(SAMPLE_PERIOD);
-
-  setupLEDs();
-
-  // wait a bit for the ELM327 to come online
-  delay(2000);
-
   myELM327.begin(ELM_PORT);
+  myTransfer.begin(LED_DRIVER_PORT);
 
   while(!myELM327.connected)
-  {
     myELM327.initializeELM();
-    delay(100);
-  }
 }
-
-
 
 
 void loop()
 {
-  // only query the ELM327 every so often
-  if(sampleTimer.fire())
+  switch(state)
   {
-    switch(state)
+    case get_rpm:
     {
-      case get_rpm:
+      float tempRPM = myELM327.rpm();
+      
+      if(myELM327.status == ELM_SUCCESS)
       {
-        float tempRPM = myELM327.rpm();
-        
-        if(myELM327.status == ELM_SUCCESS)
-        {
-          rpm = tempRPM;
-          updateLEDs();
-        }
-        else
-        {
-          DEBUG_PORT.print(F("\tERROR: "));
-          DEBUG_PORT.println(myELM327.status);
-        }
-        
-        state = get_speed;
-        break;
+        carTelem.rpm = tempRPM;
+        myTransfer.txObj(carTelem, sizeof(carTelem));
+        myTransfer.sendData(sizeof(carTelem));
       }
+      else
+        printError();
+      
+      state = get_speed;
+      break;
+    }
 
-      case get_speed:
+    case get_speed:
+    {
+      float tempMPH = myELM327.mph();
+      
+      if(myELM327.status == ELM_SUCCESS)
       {
-        float tempMPH = myELM327.mph();
-        
-        if(myELM327.status == ELM_SUCCESS)
-        {
-          speed_mph = tempMPH;
-          updateLEDs();
-        }
-        else
-        {
-          DEBUG_PORT.print(F("\tERROR: "));
-          DEBUG_PORT.println(myELM327.status);
-        }
-        
-        state = get_rpm;
-        break;
+        carTelem.mph = tempMPH;
+        myTransfer.txObj(carTelem, sizeof(carTelem));
+        myTransfer.sendData(sizeof(carTelem));
       }
+      else
+        printError();
+      
+      state = get_rpm;
+      break;
     }
   }
 
-  // extra processing here:
   serverProcessing();
 }
-
-
 
 
 void serverProcessing()
@@ -335,101 +178,53 @@ void serverProcessing()
 }
 
 
-
-
-void setupLEDs()
+void printError()
 {
-  initSevenSeg(0);
-  initSevenSeg(1);
-  initRpmDisp();
-}
-
-
-
-
-void updateLEDs()
-{
-  DEBUG_PORT.print(rpm); DEBUG_PORT.print(" "); DEBUG_PORT.println(speed_mph);
-
-  updateSpeedDisp(speed_mph);
-  updateRpmDisp((uint16_t)rpm);
-}
-
-
-
-
-void updateSpeedDisp(float speed_mph)
-{
-  uint8_t tensPlace;
-  uint8_t onesPlace;
-  uint8_t adjSpeed_mph = (uint8_t)(speed_mph + 0.5); // add 0.5 and type-cast in order to propperly round float
+  DEBUG_PORT.print("Received: ");
+  for (byte i = 0; i < PAYLOAD_LEN; i++)
+    DEBUG_PORT.write(myELM327.payload[i]);
+  DEBUG_PORT.println();
   
-  tensPlace = adjSpeed_mph / 10;
-  if(tensPlace == 0)
-    tensPlace = 10; // this will cause a blank to be sent to the display
-    
-  onesPlace = adjSpeed_mph % 10;
-  
-  updateSevenSeg(0, onesPlace);
-  updateSevenSeg(1, tensPlace);
-}
-
-
-
-
-void initSevenSeg(uint8_t segNum)
-{
-  uint8_t value = 10;
-  
-  for(uint8_t i = 0; i < 7; i++)
+  switch (myELM327.status)
   {
-    pinMode(speed_led_pin_array[segNum][i], OUTPUT);
-    
-    if(seven_seg_pix_map[value][i])
-      digitalWrite(speed_led_pin_array[segNum][i], LOW);
-    else
-      digitalWrite(speed_led_pin_array[segNum][i], HIGH);
+    case ELM_SUCCESS:
+    {
+      DEBUG_PORT.println(F("\tELM_SUCCESS"));
+    }
+    case ELM_NO_RESPONSE:
+    {
+      DEBUG_PORT.println(F("\tERROR: ELM_NO_RESPONSE"));
+    }
+    case ELM_BUFFER_OVERFLOW:
+    {
+      DEBUG_PORT.println(F("\tERROR: ELM_BUFFER_OVERFLOW"));
+    }
+    case ELM_GARBAGE:
+    {
+      DEBUG_PORT.println(F("\tERROR: ELM_GARBAGE"));
+    }
+    case ELM_UNABLE_TO_CONNECT:
+    {
+      DEBUG_PORT.println(F("\tERROR: ELM_UNABLE_TO_CONNECT"));
+    }
+    case ELM_NO_DATA:
+    {
+      DEBUG_PORT.println(F("\tERROR: ELM_NO_DATA"));
+    }
+    case ELM_STOPPED:
+    {
+      DEBUG_PORT.println(F("\tERROR: ELM_STOPPED"));
+    }
+    case ELM_TIMEOUT:
+    {
+      DEBUG_PORT.println(F("\tERROR: ELM_TIMEOUT"));
+    }
+    case ELM_GENERAL_ERROR:
+    {
+      DEBUG_PORT.println(F("\tERROR: ELM_GENERAL_ERROR"));
+    }
   }
+
+  delay(100);
 }
 
-
-
-
-void updateSevenSeg(uint8_t segNum, uint8_t value)
-{
-  for(uint8_t i = 0; i < 7; i++)
-  {
-    if(seven_seg_pix_map[value][i])
-      digitalWrite(speed_led_pin_array[segNum][i], LOW);
-    else
-      digitalWrite(speed_led_pin_array[segNum][i], HIGH);
-  }
-}
-
-
-
-
-void initRpmDisp()
-{
-  for(uint8_t i = 0; i < 10; i++)
-  {
-    pinMode(rpm_array[i], OUTPUT);
-    digitalWrite(rpm_array[i], HIGH);
-  }
-}
-
-
-
-
-void updateRpmDisp(uint16_t rpm)
-{
-  uint16_t adjRPM = constrain(map(rpm, MIN_RPM, MAX_RPM, 0, 9), 0, 9);
-  
-  for(uint8_t i = 0; i < 10; i++)
-  {
-    if(adjRPM >= i)
-      digitalWrite(rpm_array[i], LOW);
-    else
-      digitalWrite(rpm_array[i], HIGH);
-  }
-}
