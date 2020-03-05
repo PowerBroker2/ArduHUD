@@ -27,6 +27,7 @@ fsm state = get_rpm;
 
 
 struct STRUCT {
+  int8_t status;
   uint32_t rpm;
   float mph;
 } carTelem;
@@ -39,7 +40,7 @@ void setup()
   
   DEBUG_PORT.begin(115200);
   LED_DRIVER_PORT.begin(115200);
-  ELM_PORT.begin("ESP32test", true);
+  ELM_PORT.begin("ArduHUD", true);
   
   if (!ELM_PORT.connect("OBDII"))
   {
@@ -51,6 +52,7 @@ void setup()
   IPAddress myIP = WiFi.softAPIP();
   DEBUG_PORT.println(myIP);
   server.begin();
+  
   myELM327.begin(ELM_PORT);
   myTransfer.begin(LED_DRIVER_PORT);
 
@@ -66,13 +68,11 @@ void loop()
     case get_rpm:
     {
       float tempRPM = myELM327.rpm();
+
+      carTelem.status = myELM327.status;
       
       if(myELM327.status == ELM_SUCCESS)
-      {
         carTelem.rpm = tempRPM;
-        myTransfer.txObj(carTelem, sizeof(carTelem));
-        myTransfer.sendData(sizeof(carTelem));
-      }
       else
         printError();
       
@@ -83,13 +83,11 @@ void loop()
     case get_speed:
     {
       float tempMPH = myELM327.mph();
+
+      carTelem.status = myELM327.status;
       
       if(myELM327.status == ELM_SUCCESS)
-      {
         carTelem.mph = tempMPH;
-        myTransfer.txObj(carTelem, sizeof(carTelem));
-        myTransfer.sendData(sizeof(carTelem));
-      }
       else
         printError();
       
@@ -97,6 +95,9 @@ void loop()
       break;
     }
   }
+
+  myTransfer.txObj(carTelem, sizeof(carTelem));
+  myTransfer.sendData(sizeof(carTelem));
 
   serverProcessing();
 }
@@ -184,46 +185,22 @@ void printError()
     DEBUG_PORT.write(myELM327.payload[i]);
   DEBUG_PORT.println();
   
-  switch (myELM327.status)
-  {
-    case ELM_SUCCESS:
-    {
-      DEBUG_PORT.println(F("\tELM_SUCCESS"));
-    }
-    case ELM_NO_RESPONSE:
-    {
-      DEBUG_PORT.println(F("\tERROR: ELM_NO_RESPONSE"));
-    }
-    case ELM_BUFFER_OVERFLOW:
-    {
-      DEBUG_PORT.println(F("\tERROR: ELM_BUFFER_OVERFLOW"));
-    }
-    case ELM_GARBAGE:
-    {
-      DEBUG_PORT.println(F("\tERROR: ELM_GARBAGE"));
-    }
-    case ELM_UNABLE_TO_CONNECT:
-    {
-      DEBUG_PORT.println(F("\tERROR: ELM_UNABLE_TO_CONNECT"));
-    }
-    case ELM_NO_DATA:
-    {
-      DEBUG_PORT.println(F("\tERROR: ELM_NO_DATA"));
-    }
-    case ELM_STOPPED:
-    {
-      DEBUG_PORT.println(F("\tERROR: ELM_STOPPED"));
-    }
-    case ELM_TIMEOUT:
-    {
-      DEBUG_PORT.println(F("\tERROR: ELM_TIMEOUT"));
-    }
-    case ELM_GENERAL_ERROR:
-    {
-      DEBUG_PORT.println(F("\tERROR: ELM_GENERAL_ERROR"));
-    }
-  }
+  if (myELM327.status == ELM_SUCCESS)
+    DEBUG_PORT.println(F("\tELM_SUCCESS"));
+  else if (myELM327.status == ELM_NO_RESPONSE)
+    DEBUG_PORT.println(F("\tERROR: ELM_NO_RESPONSE"));
+  else if (myELM327.status == ELM_BUFFER_OVERFLOW)
+    DEBUG_PORT.println(F("\tERROR: ELM_BUFFER_OVERFLOW"));
+  else if (myELM327.status == ELM_UNABLE_TO_CONNECT)
+    DEBUG_PORT.println(F("\tERROR: ELM_UNABLE_TO_CONNECT"));
+  else if (myELM327.status == ELM_NO_DATA)
+    DEBUG_PORT.println(F("\tERROR: ELM_NO_DATA"));
+  else if (myELM327.status == ELM_STOPPED)
+    DEBUG_PORT.println(F("\tERROR: ELM_STOPPED"));
+  else if (myELM327.status == ELM_TIMEOUT)
+    DEBUG_PORT.println(F("\tERROR: ELM_TIMEOUT"));
+  else if (myELM327.status == ELM_TIMEOUT)
+    DEBUG_PORT.println(F("\tERROR: ELM_GENERAL_ERROR"));
 
   delay(100);
 }
-
