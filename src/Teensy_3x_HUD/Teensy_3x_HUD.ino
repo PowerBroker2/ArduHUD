@@ -1,4 +1,9 @@
-#include <SerialTransfer.h>
+#include "SerialTransfer.h"
+#include "ELMduino.h"
+
+
+#define DEBUG_PORT      Serial
+#define LED_DRIVER_PORT Serial2
 
 
 SerialTransfer myTransfer;
@@ -134,6 +139,7 @@ const uint16_t MIN_RPM = 700;
 
 
 struct STRUCT {
+  int8_t status;
   uint32_t rpm;
   float mph;
 } carTelem;
@@ -141,10 +147,10 @@ struct STRUCT {
 
 void setup()
 {
-  Serial.begin(115200);
-  Serial2.begin(115200);
+  DEBUG_PORT.begin(115200);
+  LED_DRIVER_PORT.begin(115200);
 
-  myTransfer.begin(Serial2);
+  myTransfer.begin(LED_DRIVER_PORT);
 
   setupLEDs();
 }
@@ -155,12 +161,16 @@ void loop()
   if(myTransfer.available())
   {
     myTransfer.rxObj(carTelem, sizeof(carTelem));
-    updateLEDs();
+
+    if (carTelem.status)
+      printError();
+    else
+      updateLEDs();
   }
   else if(myTransfer.status < 0)
   {
-    Serial.print("ERROR: ");
-    Serial.println(myTransfer.status);
+    DEBUG_PORT.print("ERROR: ");
+    DEBUG_PORT.println(myTransfer.status);
   }
 }
 
@@ -253,5 +263,26 @@ void updateRpmDisp(uint32_t rpm)
     else
       digitalWrite(rpm_array[i], HIGH);
   }
+}
+
+
+void printError()
+{
+  if (carTelem.status == ELM_SUCCESS)
+    DEBUG_PORT.println(F("\tELM_SUCCESS"));
+  else if (carTelem.status == ELM_NO_RESPONSE)
+    DEBUG_PORT.println(F("\tERROR: ELM_NO_RESPONSE"));
+  else if (carTelem.status == ELM_BUFFER_OVERFLOW)
+    DEBUG_PORT.println(F("\tERROR: ELM_BUFFER_OVERFLOW"));
+  else if (carTelem.status == ELM_UNABLE_TO_CONNECT)
+    DEBUG_PORT.println(F("\tERROR: ELM_UNABLE_TO_CONNECT"));
+  else if (carTelem.status == ELM_NO_DATA)
+    DEBUG_PORT.println(F("\tERROR: ELM_NO_DATA"));
+  else if (carTelem.status == ELM_STOPPED)
+    DEBUG_PORT.println(F("\tERROR: ELM_STOPPED"));
+  else if (carTelem.status == ELM_TIMEOUT)
+    DEBUG_PORT.println(F("\tERROR: ELM_TIMEOUT"));
+  else if (carTelem.status == ELM_TIMEOUT)
+    DEBUG_PORT.println(F("\tERROR: ELM_GENERAL_ERROR"));
 }
 
