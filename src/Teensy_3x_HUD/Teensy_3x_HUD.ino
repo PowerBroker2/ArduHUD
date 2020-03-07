@@ -3,7 +3,7 @@
 
 
 #define DEBUG_PORT      Serial
-#define LED_DRIVER_PORT Serial2
+#define LED_DRIVER_PORT Serial1
 
 
 SerialTransfer myTransfer;
@@ -231,6 +231,8 @@ void updateSpeedDisp(float speed_mph)
   tensPlace = adjSpeed_mph / 10;
   if(tensPlace == 0)
     tensPlace = 10; // this will cause a blank to be sent to the display
+  else if (tensPlace == 10)
+    tensPlace = 0;
     
   onesPlace = adjSpeed_mph % 10;
   
@@ -285,4 +287,3 @@ void printError()
   else if (carTelem.status == ELM_TIMEOUT)
     DEBUG_PORT.println(F("\tERROR: ELM_GENERAL_ERROR"));
 }
-
