@@ -1,6 +1,3 @@
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <WiFiAP.h>
 #include "BluetoothSerial.h"
 #include "SerialTransfer.h"
 #include "ELMduino.h"
@@ -12,12 +9,7 @@ BluetoothSerial SerialBT;
 #define ELM_PORT        SerialBT
 
 
-const char *ssid = "HUDuino";
-const char MAIN_page[] PROGMEM = "<!DOCTYPE html>\n<html>\n<style>\n.card{\n    max-width: 400px;\n     min-height: 250px;\n     background: #02b875;\n     padding: 30px;\n     box-sizing: border-box;\n     color: #FFF;\n     margin:20px;\n     box-shadow: 0px 2px 18px -4px rgba(0,0,0,0.75);\n}\n</style>\n\n<body>\n<div class=\"card\">\n  <h4>The ESP32 Update web page without refresh</h4><br>\n  <h1>Sensor Value: <span id=\"ADCValue\">0</span></h1><br>\n</div>\n</body>\n\n<script>\nsetInterval(function() {\n  // Call a function repetatively with 0.1 Second interval\n  getData();\n}, 100); //100mSeconds update rate\n\nfunction getData() {\n  var xhttp = new XMLHttpRequest();\n  xhttp.onreadystatechange = function() {\n    if (this.readyState == 4 && this.status == 200) {\n      document.getElementById(\"ADCValue\").innerHTML =\n      this.responseText;\n    }\n  };\n  xhttp.open(\"GET\", \"readADC\", true);\n  xhttp.send();\n}\n</script>\n</html>";
-
-
 SerialTransfer myTransfer;
-WiFiServer server(80);
 ELM327 myELM327;
 
 
@@ -36,7 +28,10 @@ struct STRUCT {
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_BUILTIN, LOW);
+
+  // Wait for ELM327 to init
+  delay(3000);
   
   DEBUG_PORT.begin(115200);
   LED_DRIVER_PORT.begin(115200);
@@ -47,11 +42,6 @@ void setup()
     DEBUG_PORT.println("Couldn't connect to OBD scanner");
     while(1);
   }
-
-  WiFi.softAP(ssid);
-  IPAddress myIP = WiFi.softAPIP();
-  DEBUG_PORT.println(myIP);
-  server.begin();
   
   myELM327.begin(ELM_PORT);
   myTransfer.begin(LED_DRIVER_PORT);
@@ -98,83 +88,6 @@ void loop()
 
   myTransfer.txObj(carTelem, sizeof(carTelem));
   myTransfer.sendData(sizeof(carTelem));
-
-  serverProcessing();
-}
-
-
-void serverProcessing()
-{
-  bool main = false;
-  bool adc = false;
-  
-  WiFiClient client = server.available();
-
-  if (client)
-  {
-    String currentLine = "";
-    
-    while (client.connected())
-    {
-      if (client.available())
-      {
-        char c = client.read();
-        //Serial.write(c);
-
-        if (currentLine.endsWith("GET / HTTP"))
-          main = true;
-        else if (currentLine.endsWith("GET /readADC HTTP"))
-          adc = true;
-        
-        if (c == '\n')
-        {
-          if (!currentLine.length())
-          {
-            if (main)
-            {
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-type:text/html");
-              client.println();
-        
-              client.print(MAIN_page);
-              client.println();
-      
-              main = false;
-              break;
-            }
-            else if (adc)
-            {
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-type:text/html");
-              client.println();
-        
-              client.println(random(0, 1023));
-              client.println();
-      
-              adc = false;
-              break;
-            }
-            else
-            {
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-type:text/html");
-              client.println();
-        
-              client.print(MAIN_page);
-              client.println();
-              break;
-            }
-          }
-          else
-            currentLine = "";
-        }
-        else if (c != '\r')
-          currentLine += c;
-      }
-    }
-
-    client.stop();
-  }
 }
 
 
@@ -204,3 +117,4 @@ void printError()
 
   delay(100);
 }
+
