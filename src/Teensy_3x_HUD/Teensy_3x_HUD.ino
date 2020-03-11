@@ -1,11 +1,31 @@
+#include "Adafruit_GFX.h"
+#include "Adafruit_SSD1331.h"
 #include "SerialTransfer.h"
 #include "ELMduino.h"
 
+
+#define BLACK   0x0000
+#define BLUE    0x001F
+#define RED     0xF800
+#define GREEN   0x07E0
+#define CYAN    0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW  0xFFE0
+#define WHITE   0xFFFF
+
+#define SCL_PIN 39
+#define SDA_PIN 38
+#define RES_PIN 37
+#define DC_PIN  36
+#define CS_PIN  35
+
+#define SW_PIN 34
 
 #define DEBUG_PORT      Serial
 #define LED_DRIVER_PORT Serial1
 
 
+Adafruit_SSD1331 display = Adafruit_SSD1331(CS_PIN, DC_PIN, SDA_PIN, SCL_PIN, RES_PIN);
 SerialTransfer myTransfer;
 
 
@@ -134,8 +154,15 @@ const uint8_t rpm_array[10] = {23,  // 1 (LED #) - Fully left in HUD - Red
                                16,  // 8
                                15,  // 9
                                14}; // 10 - Fully right in HUD - Blue
+
 const uint16_t MAX_RPM = 3500;
 const uint16_t MIN_RPM = 700;
+
+const uint8_t RESET_MESSAGE = 1;
+
+
+bool prevButtonState = true;
+bool curButtonState  = true;
 
 
 struct STRUCT {
@@ -150,28 +177,55 @@ void setup()
   DEBUG_PORT.begin(115200);
   LED_DRIVER_PORT.begin(115200);
 
+  display.begin();
   myTransfer.begin(LED_DRIVER_PORT);
 
   setupLEDs();
+
+  display.fillScreen(BLACK);
+  display.setCursor(7,5);
+  display.setTextColor(WHITE);
+  display.setTextSize(2);
+  display.print("ArduHUD");
 }
 
 
 void loop()
 {
-  if(myTransfer.available())
+  if (myTransfer.available())
   {
     myTransfer.rxObj(carTelem, sizeof(carTelem));
 
     if (carTelem.status)
       printError();
     else
+    {
       updateLEDs();
+
+      carTelem.rpm;
+      carTelem.mph;
+
+      display.fillScreen(BLACK);
+      display.setCursor(7,5);
+      display.setTextColor(WHITE);
+      display.setTextSize(2);
+      display.print("ArduHUD");
+    }
   }
-  else if(myTransfer.status < 0)
+  else if (myTransfer.status < 0)
   {
     DEBUG_PORT.print("ERROR: ");
     DEBUG_PORT.println(myTransfer.status);
+
+    display.fillScreen(BLACK);
+    display.setCursor(20,5);
+    display.setTextColor(RED);
+    display.setTextSize(2);
+    display.print("ERROR");
   }
+
+  if (buttonPressed())
+    sendReset();
 }
 
 
@@ -192,7 +246,7 @@ void initSevenSeg(uint8_t segNum)
   {
     pinMode(speed_led_pin_array[segNum][i], OUTPUT);
     
-    if(seven_seg_pix_map[value][i])
+    if (seven_seg_pix_map[value][i])
       digitalWrite(speed_led_pin_array[segNum][i], LOW);
     else
       digitalWrite(speed_led_pin_array[segNum][i], HIGH);
@@ -225,11 +279,11 @@ void updateSpeedDisp(float speed_mph)
   uint8_t adjSpeed_mph = (uint8_t)(speed_mph + 0.5); // add 0.5 and type-cast in order to propperly round float
 
   hundredsPlace = adjSpeed_mph / 100;
-  if(hundredsPlace == 0)
+  if (hundredsPlace == 0)
     hundredsPlace = 10; // this will cause a blank to be sent to the display
   
   tensPlace = adjSpeed_mph / 10;
-  if(tensPlace == 0)
+  if (tensPlace == 0)
     tensPlace = 10; // this will cause a blank to be sent to the display
   else if (tensPlace == 10)
     tensPlace = 0;
@@ -246,7 +300,7 @@ void updateSevenSeg(uint8_t segNum, uint8_t value)
 {
   for(uint8_t i = 0; i < 7; i++)
   {
-    if(seven_seg_pix_map[value][i])
+    if (seven_seg_pix_map[value][i])
       digitalWrite(speed_led_pin_array[segNum][i], LOW);
     else
       digitalWrite(speed_led_pin_array[segNum][i], HIGH);
@@ -260,7 +314,7 @@ void updateRpmDisp(uint32_t rpm)
   
   for(uint8_t i = 0; i < 10; i++)
   {
-    if(adjRPM >= i)
+    if (adjRPM >= i)
       digitalWrite(rpm_array[i], LOW);
     else
       digitalWrite(rpm_array[i], HIGH);
@@ -287,3 +341,23 @@ void printError()
   else if (carTelem.status == ELM_TIMEOUT)
     DEBUG_PORT.println(F("\tERROR: ELM_GENERAL_ERROR"));
 }
+
+
+// TODO: Debounce
+bool buttonPressed()
+{
+  prevButtonState = curButtonState;
+  curButtonState  = digitalRead(SW_PIN);
+
+  if (!curButtonState && prevButtonState)
+    return true;
+  return false;
+}
+
+
+void sendReset()
+{
+  myTransfer.txObj(RESET_MESSAGE, sizeof(RESET_MESSAGE));
+  myTransfer.sendData(sizeof(RESET_MESSAGE));
+}
+
