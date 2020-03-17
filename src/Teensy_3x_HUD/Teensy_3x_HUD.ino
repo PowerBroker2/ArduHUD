@@ -197,19 +197,26 @@ void loop()
     myTransfer.rxObj(carTelem, sizeof(carTelem));
 
     if (carTelem.status)
+    {
       printError();
+      
+      display.fillScreen(BLACK);
+      display.setCursor(20,5);
+      display.setTextColor(RED);
+      display.setTextSize(2);
+      display.print("ELM ERROR");
+    }
     else
     {
       updateLEDs();
-
-      carTelem.rpm;
-      carTelem.mph;
 
       display.fillScreen(BLACK);
       display.setCursor(7,5);
       display.setTextColor(WHITE);
       display.setTextSize(2);
-      display.print("ArduHUD");
+      display.print(int(carTelem.mph + 0.5));
+      display.setCursor(7,10);
+      display.print(carTelem.rpm);
     }
   }
   else if (myTransfer.status < 0)
@@ -221,7 +228,7 @@ void loop()
     display.setCursor(20,5);
     display.setTextColor(RED);
     display.setTextSize(2);
-    display.print("ERROR");
+    display.print("TX ERROR");
   }
 
   if (buttonPressed())
@@ -360,4 +367,3 @@ void sendReset()
   myTransfer.txObj(RESET_MESSAGE, sizeof(RESET_MESSAGE));
   myTransfer.sendData(sizeof(RESET_MESSAGE));
 }
-
