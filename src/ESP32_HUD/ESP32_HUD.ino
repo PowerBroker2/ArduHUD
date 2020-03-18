@@ -38,11 +38,25 @@ void setup()
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
 
+  DEBUG_PORT.begin(115200);
+  LED_DRIVER_PORT.begin(115200);
+
+  WiFi.softAP(ssid);
+  IPAddress myIP = WiFi.softAPIP();
+  DEBUG_PORT.println(myIP);
+  server.begin();
+
+  //////////////////
+  carTelem.rpm = 2000;
+  carTelem.mph = 50;
+  
+  while(1)
+    serverProcessing();
+  //////////////////
+
   // Wait for ELM327 to init
   delay(3000);
   
-  DEBUG_PORT.begin(115200);
-  LED_DRIVER_PORT.begin(115200);
   ELM_PORT.begin("ArduHUD", true);
   
   if (!ELM_PORT.connect("OBDII"))
@@ -118,7 +132,7 @@ void serverProcessing()
       if (client.available())
       {
         char c = client.read();
-        //Serial.write(c);
+        Serial.write(c);
 
         if (currentLine.endsWith("GET / HTTP"))
           mainPage = true;
