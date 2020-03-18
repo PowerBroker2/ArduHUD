@@ -215,7 +215,7 @@ void loop()
       display.setTextColor(WHITE);
       display.setTextSize(2);
       display.print(int(carTelem.mph + 0.5));
-      display.setCursor(7,10);
+      display.setCursor(7,25);
       display.print(carTelem.rpm);
     }
   }
