@@ -46,14 +46,6 @@ void setup()
   DEBUG_PORT.println(myIP);
   server.begin();
 
-  //////////////////
-  carTelem.rpm = 2000;
-  carTelem.mph = 50;
-  
-  while(1)
-    serverProcessing();
-  //////////////////
-
   // Wait for ELM327 to init
   delay(3000);
   
@@ -69,7 +61,10 @@ void setup()
   myTransfer.begin(LED_DRIVER_PORT);
 
   while(!myELM327.connected)
+  {
     myELM327.initializeELM();
+    serverProcessing();
+  }
 }
 
 
