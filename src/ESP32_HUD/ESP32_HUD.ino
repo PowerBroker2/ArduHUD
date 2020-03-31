@@ -32,7 +32,10 @@ struct STRUCT {
   int8_t status;
   uint32_t rpm;
   float mph;
+  char msg[PAYLOAD_LEN];
 } carTelem;
+
+
 
 
 void setup()
@@ -49,7 +52,7 @@ void setup()
   server.begin();
 
   // Wait for ELM327 to init
-  delay(3000);
+  delay(1000);
   
   ELM_PORT.begin("ArduHUD", true);
   
@@ -70,6 +73,8 @@ void setup()
 }
 
 
+
+
 void loop()
 {
   switch(state)
@@ -79,6 +84,7 @@ void loop()
       float tempRPM = myELM327.rpm();
 
       carTelem.status = myELM327.status;
+      memcpy(carTelem.msg, myELM327.payload, sizeof(myELM327.payload));
       
       if(myELM327.status == ELM_SUCCESS)
         carTelem.rpm = tempRPM;
@@ -94,6 +100,7 @@ void loop()
       float tempMPH = myELM327.mph();
 
       carTelem.status = myELM327.status;
+      memcpy(carTelem.msg, myELM327.payload, sizeof(myELM327.payload));
       
       if(myELM327.status == ELM_SUCCESS)
         carTelem.mph = tempMPH;
@@ -110,6 +117,8 @@ void loop()
 
   serverProcessing();
 }
+
+
 
 
 void serverProcessing()
@@ -202,6 +211,8 @@ void serverProcessing()
 }
 
 
+
+
 void printError()
 {
   DEBUG_PORT.print("Received: ");
@@ -228,3 +239,6 @@ void printError()
 
   delay(100);
 }
+
+
+
