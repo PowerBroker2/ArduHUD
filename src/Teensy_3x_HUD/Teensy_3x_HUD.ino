@@ -1,3 +1,4 @@
+#include "SdFat.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_SSD1331.h"
 #include "SerialTransfer.h"
@@ -25,6 +26,8 @@
 #define LED_DRIVER_PORT Serial1
 
 
+SdFatSdioEX sd;
+SdFile myFile;
 Adafruit_SSD1331 display = Adafruit_SSD1331(CS_PIN, DC_PIN, SDA_PIN, SCL_PIN, RES_PIN);
 SerialTransfer myTransfer;
 
@@ -161,6 +164,8 @@ const uint16_t MIN_RPM = 700;
 const uint8_t RESET_MESSAGE = 1;
 
 
+char filename[20];
+
 bool prevButtonState = true;
 bool curButtonState  = true;
 
@@ -169,7 +174,10 @@ struct STRUCT {
   int8_t status;
   uint32_t rpm;
   float mph;
+  char msg[PAYLOAD_LEN];
 } carTelem;
+
+
 
 
 void setup()
@@ -177,10 +185,12 @@ void setup()
   DEBUG_PORT.begin(115200);
   LED_DRIVER_PORT.begin(115200);
 
+  setupLEDs();
+
   display.begin();
   myTransfer.begin(LED_DRIVER_PORT);
 
-  setupLEDs();
+  setupSD();
 
   display.fillScreen(BLACK);
   display.setCursor(7,5);
@@ -190,21 +200,29 @@ void setup()
 }
 
 
+
+
 void loop()
 {
   if (myTransfer.available())
   {
     myTransfer.rxObj(carTelem, sizeof(carTelem));
+    
+    logSD();
 
     if (carTelem.status)
     {
+      setupLEDs();
       printError();
+
+      char buff[20];
+      sprintf(buff, "ELM ERROR: %d", carTelem.status);
       
       display.fillScreen(BLACK);
       display.setCursor(20,5);
       display.setTextColor(RED);
       display.setTextSize(2);
-      display.print("ELM ERROR");
+      display.print(buff);
     }
     else
     {
@@ -221,6 +239,8 @@ void loop()
   }
   else if (myTransfer.status < 0)
   {
+    logSD();
+    
     DEBUG_PORT.print("ERROR: ");
     DEBUG_PORT.println(myTransfer.status);
 
@@ -236,6 +256,8 @@ void loop()
 }
 
 
+
+
 void setupLEDs()
 {
   initSevenSeg(0);
@@ -243,6 +265,57 @@ void setupLEDs()
   initSevenSeg(3);
   initRpmDisp();
 }
+
+
+
+
+void setupSD()
+{
+  unsigned int driveCount = 1;
+
+  while (!sd.begin())
+  {
+    display.fillScreen(BLACK);
+    display.setCursor(20,5);
+    display.setTextColor(RED);
+    display.setTextSize(2);
+    display.print(F("SD iniatialization failed"));
+    delay(100);
+  }
+
+  sprintf(filename, "drive_%d.txt", driveCount);
+
+  while(sd.exists(filename))
+  {
+    driveCount++;
+    sprintf(filename, "drive_%d.txt", driveCount);
+  }
+  
+  myFile.open(filename, FILE_WRITE);
+  myFile.println(F("Epoch, TX Status, ELM Status, ELM Msg, MPH, RPM"));
+  myFile.close();
+}
+
+
+
+
+void logSD()
+{
+  char buff[50];
+
+  sprintf(buff, "%lu, %d, %d, %s, %f, %lu", millis(),
+                                          myTransfer.status,
+                                          carTelem.status,
+                                          carTelem.msg,
+                                          carTelem.mph,
+                                          carTelem.rpm);
+  
+  myFile.open(filename, FILE_WRITE);
+  myFile.println(buff);
+  myFile.close();
+}
+
+
 
 
 void initSevenSeg(uint8_t segNum)
@@ -261,6 +334,8 @@ void initSevenSeg(uint8_t segNum)
 }
 
 
+
+
 void initRpmDisp()
 {
   for(uint8_t i = 0; i < 10; i++)
@@ -271,11 +346,15 @@ void initRpmDisp()
 }
 
 
+
+
 void updateLEDs()
 {
   updateSpeedDisp(carTelem.mph);
   updateRpmDisp(carTelem.rpm);
 }
+
+
 
 
 void updateSpeedDisp(float speed_mph)
@@ -303,6 +382,8 @@ void updateSpeedDisp(float speed_mph)
 }
 
 
+
+
 void updateSevenSeg(uint8_t segNum, uint8_t value)
 {
   for(uint8_t i = 0; i < 7; i++)
@@ -313,6 +394,8 @@ void updateSevenSeg(uint8_t segNum, uint8_t value)
       digitalWrite(speed_led_pin_array[segNum][i], HIGH);
   }
 }
+
+
 
 
 void updateRpmDisp(uint32_t rpm)
@@ -327,6 +410,8 @@ void updateRpmDisp(uint32_t rpm)
       digitalWrite(rpm_array[i], HIGH);
   }
 }
+
+
 
 
 void printError()
@@ -350,6 +435,8 @@ void printError()
 }
 
 
+
+
 // TODO: Debounce
 bool buttonPressed()
 {
@@ -362,8 +449,13 @@ bool buttonPressed()
 }
 
 
+
+
 void sendReset()
 {
   myTransfer.txObj(RESET_MESSAGE, sizeof(RESET_MESSAGE));
   myTransfer.sendData(sizeof(RESET_MESSAGE));
 }
+
+
+
