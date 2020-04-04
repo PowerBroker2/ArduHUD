@@ -5,6 +5,8 @@
 #include "ELMduino.h"
 
 
+
+
 #define BLACK   0x0000
 #define BLUE    0x001F
 #define RED     0xF800
@@ -26,11 +28,15 @@
 #define LED_DRIVER_PORT Serial1
 
 
+
+
 SdFatSdioEX sd;
 SdFile myFile;
 File root;
 Adafruit_SSD1331 display = Adafruit_SSD1331(CS_PIN, DC_PIN, SDA_PIN, SCL_PIN, RES_PIN);
 SerialTransfer myTransfer;
+
+
 
 
 const uint8_t speed_led_pin_array[3][7] = { //--------- one's place
@@ -176,7 +182,7 @@ const uint8_t rpm_array[10] = {23,  // 1 (LED #) - Fully left in HUD - Red
 
 const uint16_t MAX_RPM = 3500;
 const uint16_t MIN_RPM = 700;
-
+const uint8_t MSG_LEN = 16;
 const uint8_t RESET_MESSAGE = 1;
 
 
@@ -184,13 +190,14 @@ char filename[20];
 
 bool prevButtonState = true;
 bool curButtonState  = true;
+bool useSD = false;
 
 
 struct STRUCT {
   int8_t status;
   uint32_t rpm;
   float mph;
-  char msg[PAYLOAD_LEN];
+  char msg[MSG_LEN];
 } carTelem;
 
 
@@ -206,7 +213,7 @@ void setup()
   display.begin();
   myTransfer.begin(LED_DRIVER_PORT);
 
-  setupSD();
+  useSD = setupSD();
 
   display.fillScreen(BLACK);
   display.setCursor(7, 5);
@@ -224,14 +231,15 @@ void loop()
   {
     myTransfer.rxObj(carTelem, sizeof(carTelem));
 
-    logSD();
+    if (useSD)
+      logSD();
 
     if (carTelem.status)
     {
       setupLEDs();
       printError();
 
-      char buff[20];
+      char buff[30];
       sprintf(buff, "ELM ERROR: %d", carTelem.status);
 
       display.fillScreen(BLACK);
@@ -255,7 +263,8 @@ void loop()
   }
   else if (myTransfer.status < 0)
   {
-    logSD();
+    if (useSD)
+      logSD();
 
     DEBUG_PORT.print("ERROR: ");
     DEBUG_PORT.println(myTransfer.status);
@@ -266,8 +275,9 @@ void loop()
     display.setTextSize(2);
     display.print("TX ERROR");
   }
-
-  handleCmds();
+  
+  if (useSD)
+    handleCmds();
 
   /*if (buttonPressed())
     sendReset();*/
@@ -406,18 +416,21 @@ void setupLEDs()
 
 
 
-void setupSD()
+bool setupSD()
 {
   unsigned int driveCount = 1;
 
-  while (!sd.begin())
+  if(!sd.begin())
   {
     display.fillScreen(BLACK);
     display.setCursor(20, 5);
     display.setTextColor(RED);
     display.setTextSize(2);
     display.print(F("SD iniatialization failed"));
-    delay(100);
+
+    delay(5000);
+
+    return false;
   }
 
   sprintf(filename, "drive_%d.txt", driveCount);
@@ -429,8 +442,10 @@ void setupSD()
   }
 
   myFile.open(filename, FILE_WRITE);
-  myFile.println(F("Epoch, TX Status, ELM Status, ELM Msg, MPH, RPM"));
+  myFile.println(F("Epoch,TX Status,ELM Status,ELM Msg,MPH,RPM"));
   myFile.close();
+
+  return true;
 }
 
 
@@ -438,9 +453,9 @@ void setupSD()
 
 void logSD()
 {
-  char buff[50];
+  char buff[100];
 
-  sprintf(buff, "%lu, %d, %d, %s, %f, %lu", millis(),
+  sprintf(buff, "%lu,%d,%d,%s,%f,%lu", millis(),
           myTransfer.status,
           carTelem.status,
           carTelem.msg,
@@ -593,3 +608,6 @@ void sendReset()
   myTransfer.txObj(RESET_MESSAGE, sizeof(RESET_MESSAGE));
   myTransfer.sendData(sizeof(RESET_MESSAGE));
 }
+
+
+
