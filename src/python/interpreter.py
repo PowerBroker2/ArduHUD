@@ -53,103 +53,104 @@ if __name__ == '__main__':
     args = setup_args()
 
     if args.ser:
-        if args.port and args.baud:
-            try:
-                port_name = None
-                
-                for p in serial_ports():
-                    if p == args.port or os.path.split(p)[-1] == args.port:
-                        port_name = p
-                        break
-    
-                if port_name is None:
-                    raise InvalidSerialPort('Invalid serial port specified.\
-                        Valid options are {ports},  but {port} was provided'.format(
-                        **{'ports': serial_ports(), 'port': args.port}))
-                else:
-                    connection = serial.Serial()
-                    connection.port = port_name
-                    connection.baudrate = int(args.baud)
-                    connection.open()
+        if args.ser.lower() == 'true':
+            if args.port and args.baud:
+                try:
+                    port_name = None
                     
-                    print('Connected on {}'.format(port_name))
-                    
-                    connection.write('ls\n'.encode())
-                    
-                    while b'?' in connection.readline():
-                        connection.write('ls\n'.encode())
-                    
-                    drive_files = []
-                    while connection.in_waiting:
-                        try:
-                            line = connection.readline().decode('utf-8')
-                            print(' '.join(line.split()))
-                            
-                            if ('.txt' in line) or ('.csv' in line):
-                                drive_files.append(line.split()[0])
-                        except UnicodeDecodeError:
-                            pass
-                    
-                    print(drive_files)
-                    
-                    if not os.path.exists(SER_DATA_DIR):
-                        os.makedirs(SER_DATA_DIR)
-                    
-                    if args.dn:
-                        drive_number = int(args.dn)
+                    for p in serial_ports():
+                        if p == args.port or os.path.split(p)[-1] == args.port:
+                            port_name = p
+                            break
+        
+                    if port_name is None:
+                        raise InvalidSerialPort('Invalid serial port specified.\
+                            Valid options are {ports},  but {port} was provided'.format(
+                            **{'ports': serial_ports(), 'port': args.port}))
                     else:
-                        for drive in drive_files:
-                            print(drive)
-                            
-                            connection.write(drive.encode())
-                            
-                            while b'?' in connection.readline():
-                                connection.write(drive.encode())
-                            
-                            found_delim_num = 0
-                            data_lines = []
-                            
-                            while True:
-                                line = connection.readline()
-                                
-                                if (b'-' * 50) in line:
-                                    break
-                                
-                                elif (b'.txt' not in line) and (b'.csv' not in line):
-                                    data_lines.append(line)
-                            
-                            with open(SER_DATA_PATH, 'w') as ser_data:
-                                for data_line in data_lines:
-                                    write_line = ''
-                                    
-                                    for char in data_line:
-                                        if chr(char).isascii():
-                                            write_line += chr(char)
-                                    
-                                    if write_line.count(',') == 5:
-                                        ser_data.write(write_line.strip())
-                                        ser_data.write('\n')
-                            
-                            if os.path.exists(SER_DATA_PATH):
-                                try:
-                                    plot_data(SER_DATA_PATH, drive)
-                                except pd.errors.ParserError:
-                                    pass
-                                except TypeError:
-                                    pass
-                                except pd.errors.EmptyDataError:
-                                    print('ERROR - Empty text file')
-                            else:
-                                print('ERROR - Could not find file {}'.format(SER_DATA_PATH))
+                        connection = serial.Serial()
+                        connection.port = port_name
+                        connection.baudrate = int(args.baud)
+                        connection.open()
                         
-                        display_plots()
-            except:
-                import traceback
-                traceback.print_exc()
-                
+                        print('Connected on {}'.format(port_name))
+                        
+                        connection.write('ls\n'.encode())
+                        
+                        while b'?' in connection.readline():
+                            connection.write('ls\n'.encode())
+                        
+                        drive_files = []
+                        while connection.in_waiting:
+                            try:
+                                line = connection.readline().decode('utf-8')
+                                print(' '.join(line.split()))
+                                
+                                if ('.txt' in line) or ('.csv' in line):
+                                    drive_files.append(line.split()[0])
+                            except UnicodeDecodeError:
+                                pass
+                        
+                        print(drive_files)
+                        
+                        if not os.path.exists(SER_DATA_DIR):
+                            os.makedirs(SER_DATA_DIR)
+                        
+                        if args.dn:
+                            drive_number = int(args.dn)
+                        else:
+                            for drive in drive_files:
+                                print(drive)
+                                
+                                connection.write(drive.encode())
+                                
+                                while b'?' in connection.readline():
+                                    connection.write(drive.encode())
+                                
+                                found_delim_num = 0
+                                data_lines = []
+                                
+                                while True:
+                                    line = connection.readline()
+                                    
+                                    if (b'-' * 50) in line:
+                                        break
+                                    
+                                    elif (b'.txt' not in line) and (b'.csv' not in line):
+                                        data_lines.append(line)
+                                
+                                with open(SER_DATA_PATH, 'w') as ser_data:
+                                    for data_line in data_lines:
+                                        write_line = ''
+                                        
+                                        for char in data_line:
+                                            if chr(char).isascii():
+                                                write_line += chr(char)
+                                        
+                                        if write_line.count(',') == 5:
+                                            ser_data.write(write_line.strip())
+                                            ser_data.write('\n')
+                                
+                                if os.path.exists(SER_DATA_PATH):
+                                    try:
+                                        plot_data(SER_DATA_PATH, drive)
+                                    except pd.errors.ParserError:
+                                        pass
+                                    except TypeError:
+                                        pass
+                                    except pd.errors.EmptyDataError:
+                                        print('ERROR - Empty text file')
+                                else:
+                                    print('ERROR - Could not find file {}'.format(SER_DATA_PATH))
+                            
+                            display_plots()
+                except:
+                    import traceback
+                    traceback.print_exc()
+                    
+                    data_file = TEST_FILE
+            else:
                 data_file = TEST_FILE
-        else:
-            data_file = TEST_FILE
     elif args.td:
         data_file = TEST_FILE
     else:
