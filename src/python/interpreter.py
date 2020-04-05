@@ -140,6 +140,30 @@ if __name__ == '__main__':
                     
                     if args.dn:
                         drive_number = int(args.dn)
+                        drive = 'drive_{}.txt'.format(drive_number)
+                        
+                        if drive in drive_files:
+                            print(drive)
+                            
+                            data_lines = grab_ser_data(connection, drive)
+                            log_ser_data(connection)
+                            
+                            if os.path.exists(SER_DATA_PATH):
+                                try:
+                                    plot_data(SER_DATA_PATH, drive)
+                                except pd.errors.ParserError:
+                                    pass
+                                except TypeError:
+                                    pass
+                                except pd.errors.EmptyDataError:
+                                    print('ERROR - Empty text file')
+                                
+                                display_plots()
+                            else:
+                                print('ERROR - Could not find file {}'.format(SER_DATA_PATH))
+                        else:
+                            print('ERROR - Drive file {} not found on SD'.format(drive))
+                        
                     else:
                         for drive in drive_files:
                             print(drive)
