@@ -278,6 +278,8 @@ void loop()
   
   if (useSD)
     handleCmds();
+  else if (sd.begin())
+    useSD = true;
 
   /*if (buttonPressed())
     sendReset();*/
