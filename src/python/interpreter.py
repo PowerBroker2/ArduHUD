@@ -191,6 +191,19 @@ if __name__ == '__main__':
                     data_file = TEST_FILE
             else:
                 data_file = TEST_FILE
+    elif args.file:
+        if os.path.exists(args.file):
+            try:
+                plot_data(args.file)
+                display_plots()
+            except pd.errors.ParserError:
+                pass
+            except TypeError:
+                pass
+            except pd.errors.EmptyDataError:
+                print('ERROR - Empty text file')
+        else:
+            print('ERROR - Could not find file {}'.format(args.file))
     elif args.td:
         data_file = TEST_FILE
     else:
@@ -198,10 +211,18 @@ if __name__ == '__main__':
     
     try:
         if os.path.exists(data_file):
-            plot_data(data_file)
+            try:
+                plot_data(data_file)
+                display_plots()
+            except pd.errors.ParserError:
+                pass
+            except TypeError:
+                pass
+            except pd.errors.EmptyDataError:
+                print('ERROR - Empty text file')
         else:
             print('ERROR - Could not find file {}'.format(data_file))
-    except:
+    except NameError:
         pass
     
     try:
