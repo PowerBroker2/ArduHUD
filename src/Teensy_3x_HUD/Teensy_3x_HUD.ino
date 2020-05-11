@@ -1,4 +1,6 @@
+#include <SPI.h>
 #include "SdFat.h"
+#include "SdTerminal.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_SSD1331.h"
 #include "SerialTransfer.h"
@@ -32,9 +34,9 @@
 
 SdFatSdioEX sd;
 SdFile myFile;
-File root;
 Adafruit_SSD1331 display = Adafruit_SSD1331(CS_PIN, DC_PIN, SDA_PIN, SCL_PIN, RES_PIN);
 SerialTransfer myTransfer;
+Terminal myTerminal;
 
 
 
@@ -215,6 +217,8 @@ void setup()
 
   useSD = setupSD();
 
+  myTerminal.begin(sd);
+
   display.fillScreen(BLACK);
   display.setCursor(7, 5);
   display.setTextColor(WHITE);
@@ -277,131 +281,12 @@ void loop()
   }
   
   if (useSD)
-    handleCmds();
+    myTerminal.handleCmds();
   else if (sd.begin())
     useSD = true;
 
   /*if (buttonPressed())
     sendReset();*/
-}
-
-
-
-
-void handleCmds()
-{
-  if (DEBUG_PORT.available())
-  {
-    char input[40] = { '\0' };
-    
-    readInput(input, sizeof(input));
-
-    char target[] = {'l', 's'};
-    if (stris(input, sizeof(input), target, sizeof(target)))
-    {
-      DEBUG_PORT.println(F("--------------------------------------------------"));
-      
-      root = sd.open("/");
-      printDirectory(root, 0);
-      
-      DEBUG_PORT.println(F("--------------------------------------------------"));
-      DEBUG_PORT.println();
-    }
-    else if (sd.exists(input))
-    {
-      DEBUG_PORT.println(F("--------------------------------------------------"));
-      DEBUG_PORT.print(input); DEBUG_PORT.println(" found:");
-
-      myFile.open(input, FILE_READ);
-      
-      int data;
-      while ((data = myFile.read()) >= 0)
-        DEBUG_PORT.write(data);
-        
-      myFile.close();
-
-      DEBUG_PORT.println(F("--------------------------------------------------"));
-      DEBUG_PORT.println();
-    }
-    else
-      DEBUG_PORT.println('?');
-  }
-}
-
-
-
-
-void readInput(char input[], uint8_t inputSize)
-{
-  uint8_t i = 0;
-  unsigned long markTime = millis();
-  
-  while (DEBUG_PORT.available())
-  {
-    char c = DEBUG_PORT.read();
-    
-    if ((millis() - markTime) >= 100)
-      break;
-    else if (c == '\n')
-      break;
-    else if (i >= inputSize)
-      break;
-
-    input[i] = c;
-    i++;
-  }
-}
-
-
-
-
-void printDirectory(File dir, int numTabs)
-{
-  char fileName[20];
-  
-  while (true)
-  {
-    File entry =  dir.openNextFile();
-    
-    if (!entry)
-      break;
-      
-    for (uint8_t i = 0; i < numTabs; i++)
-      DEBUG_PORT.print('\t');
-
-    entry.getName(fileName, sizeof(fileName));
-    DEBUG_PORT.print(fileName);
-    
-    if (entry.isDirectory())
-    {
-      DEBUG_PORT.println("/");
-      printDirectory(entry, numTabs + 1);
-    }
-    else
-    {
-      DEBUG_PORT.print("\t\t");
-      DEBUG_PORT.println(entry.size(), DEC);
-    }
-    
-    entry.close();
-  }
-}
-
-
-
-
-bool stris(const char *input, const uint8_t inputSize, const char *target, const uint8_t targetSize)
-{
-  char newInput[inputSize] = { '\0' };
-  char newTarget[targetSize] = { '\0' };
-
-  memcpy(newInput, input, inputSize);
-  memcpy(newTarget, target, targetSize);
-
-  if ((strstr(newInput, newTarget) == newInput) && (newInput[targetSize] == '\0'))
-    return true;
-  else
-    return false;
 }
 
 
@@ -610,6 +495,5 @@ void sendReset()
   myTransfer.txObj(RESET_MESSAGE, sizeof(RESET_MESSAGE));
   myTransfer.sendData(sizeof(RESET_MESSAGE));
 }
-
 
 
