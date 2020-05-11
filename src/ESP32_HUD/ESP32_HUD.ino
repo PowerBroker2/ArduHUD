@@ -226,7 +226,7 @@ void serverProcessing()
 void printError()
 {
   DEBUG_PORT.print("Received: ");
-  for (byte i = 0; i < PAYLOAD_LEN; i++)
+  for (byte i = 0; i < myELM327.recBytes; i++)
     DEBUG_PORT.write(myELM327.payload[i]);
   DEBUG_PORT.println();
   
