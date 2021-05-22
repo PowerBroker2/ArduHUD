@@ -29,10 +29,27 @@
 #define DEBUG_PORT      Serial
 #define LED_DRIVER_PORT Serial1
 
+// Uncomment 'USE_EXTERNAL_SD' define to use an external SD card adapter or leave
+// it commented to use the built in sd card.
+//#define USE_EXTERNAL_SD 
+
+#ifdef USE_EXTERNAL_SD
+const uint8_t SD_CS_PIN = SS;
+#define SPI_CLOCK SD_SCK_MHZ(10)
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SPI_CLOCK)
+#else // Use built in SD card
+
+#ifdef SDCARD_SS_PIN
+const uint8_t SD_CS_PIN = SDCARD_SS_PIN;
+#endif // SDCARD_SS_PIN
+#define SPI_CLOCK SD_SCK_MHZ(50)
+#define SD_CONFIG SdioConfig(FIFO_SDIO)
+#endif // USE_EXTERNAL_SD
 
 
 
-SdFatSdioEX sd;
+
+SdFs sd;
 SdFile myFile;
 Adafruit_SSD1331 display = Adafruit_SSD1331(CS_PIN, DC_PIN, SDA_PIN, SCL_PIN, RES_PIN);
 SerialTransfer myTransfer;
@@ -233,7 +250,7 @@ void loop()
 {
   if (myTransfer.available())
   {
-    myTransfer.rxObj(carTelem, sizeof(carTelem));
+    myTransfer.rxObj(carTelem);
 
     if (useSD)
       logSD();
@@ -307,7 +324,7 @@ bool setupSD()
 {
   unsigned int driveCount = 1;
 
-  if(!sd.begin())
+  if(!sd.begin(SD_CONFIG))
   {
     display.fillScreen(BLACK);
     display.setCursor(20, 5);
@@ -495,5 +512,3 @@ void sendReset()
   myTransfer.txObj(RESET_MESSAGE, sizeof(RESET_MESSAGE));
   myTransfer.sendData(sizeof(RESET_MESSAGE));
 }
-
-
