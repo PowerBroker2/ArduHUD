@@ -55,6 +55,7 @@ void loop()
       if (myELM327.nb_rx_state == ELM_SUCCESS)
       {
         updateRpmDisp(rpm);
+        dispData(mph, rpm);
         
         obd_state = SPEED;
       }
@@ -77,6 +78,7 @@ void loop()
       if (myELM327.nb_rx_state == ELM_SUCCESS)
       {
         updateSpeedDisp(mph);
+        dispData(mph, rpm);
         
         obd_state = ENG_RPM;
       }
