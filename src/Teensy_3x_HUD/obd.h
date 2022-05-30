@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ELMduino.h"
+#include "leds.h"
 
 
 
@@ -23,6 +24,13 @@ ELM327 myELM327;
 
 
 
+typedef enum { ENG_RPM,
+               SPEED } obd_pid_states;
+obd_pid_states obd_state = ENG_RPM;
+
+
+
+
 void initELM()
 {
   Serial.println("Attempting to connect to ELM327...");
@@ -36,34 +44,4 @@ void initELM()
   }
 
   Serial.println("Connected to ELM327");
-}
-
-
-
-
-float getMPH()
-{
-  float mph = myELM327.mph();
-
-  if (myELM327.nb_rx_state == ELM_SUCCESS)
-    return mph;
-  else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
-    myELM327.printError();
-
-  return ERR;
-}
-
-
-
-
-float getRPM()
-{
-  float rpm = myELM327.rpm();
-
-  if (myELM327.nb_rx_state == ELM_SUCCESS)
-    return rpm;
-  else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
-    myELM327.printError();
-
-  return ERR;
 }

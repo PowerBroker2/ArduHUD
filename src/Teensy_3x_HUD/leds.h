@@ -328,12 +328,31 @@ void dispData(const float& mph, const float& rpm)
 
 void dispErr()
 {
-  char buff[30];
-  sprintf(buff, "ELM ERROR: %d", myELM327.nb_rx_state);
-
   display.fillScreen(BLACK);
-  display.setCursor(20, 5);
+  display.setCursor(10, 5);
   display.setTextColor(RED);
   display.setTextSize(2);
-  display.print(buff);
+  
+  int err = myELM327.nb_rx_state;
+
+  if (err == ELM_NO_RESPONSE)
+    display.print("NO RESPONSE");
+  else if (err == ELM_BUFFER_OVERFLOW)
+    display.print("BUFFER OVERFLOW");
+  else if (err == ELM_GARBAGE)
+    display.print("GARBAGE");
+  else if (err == ELM_UNABLE_TO_CONNECT)
+    display.print("UNABLE TO CONNECT");
+  else if (err == ELM_NO_DATA)
+    display.print("NO DATA");
+  else if (err == ELM_STOPPED)
+    display.print("STOPPED");
+  else if (err == ELM_TIMEOUT)
+    display.print("TIMEOUT");
+  else if (err == ELM_GETTING_MSG)
+    display.print("GETTING MSG");
+  else if (err == ELM_MSG_RXD)
+    display.print("MSG RXD");
+  else if (err == ELM_GENERAL_ERROR)
+    display.print("GENERAL ERROR");
 }

@@ -13,6 +13,9 @@
 bool useSD   = false;
 bool useOLED = true;
 
+float rpm = 0;
+float mph = 0;
+
 
 
 
@@ -42,22 +45,54 @@ void loop()
 {
   if (useSD)
     myTerminal.handleCmds();
-  
-  float mph = getMPH();
-  float rpm = getRPM();
 
-  if ((mph != ERR) && (rpm != ERR))
+  switch (obd_state)
   {
-    updateSpeedDisp(mph);
-    updateRpmDisp(rpm);
-
-    dispData(mph, rpm);
-  }
-  else
-  {
-    updateSpeedDisp(0);
-    updateRpmDisp(0);
-
-    dispErr();
+    case ENG_RPM:
+    {
+      rpm = myELM327.rpm();
+      
+      if (myELM327.nb_rx_state == ELM_SUCCESS)
+      {
+        updateRpmDisp(rpm);
+        
+        obd_state = SPEED;
+      }
+      else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+      {
+        initRpmDisp();
+        myELM327.printError();
+        dispErr();
+        
+        obd_state = SPEED;
+      }
+      
+      break;
+    }
+    
+    case SPEED:
+    {
+      mph = myELM327.mph();
+      
+      if (myELM327.nb_rx_state == ELM_SUCCESS)
+      {
+        updateSpeedDisp(mph);
+        
+        obd_state = ENG_RPM;
+      }
+      else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+      {
+        updateSevenSeg(0, 10);
+        updateSevenSeg(1, 10);
+        updateSevenSeg(2, 10);
+        
+        myELM327.printError();
+        dispErr();
+        
+        obd_state = ENG_RPM;
+      }
+      
+      break;
+    }
   }
 }
