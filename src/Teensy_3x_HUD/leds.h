@@ -3,6 +3,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1331.h>
 #include <SPI.h>
+#include "obd.h"
 
 
 
@@ -284,7 +285,7 @@ void splashScreen()
   display.setCursor(7, 5);
   display.setTextColor(WHITE);
   display.setTextSize(2);
-  display.print("ArduHUD");
+  display.print(F("ArduHUD"));
 }
 
 
@@ -306,4 +307,33 @@ void initOLED()
 {
   display.begin();
   splashScreen();
+}
+
+
+
+
+void dispData(const float& mph, const float& rpm)
+{
+  display.fillScreen(BLACK);
+  display.setCursor(7, 5);
+  display.setTextColor(WHITE);
+  display.setTextSize(2);
+  display.print(int(mph + 0.5));
+  display.setCursor(7, 25);
+  display.print(rpm);
+}
+
+
+
+
+void dispErr()
+{
+  char buff[30];
+  sprintf(buff, "ELM ERROR: %d", myELM327.nb_rx_state);
+
+  display.fillScreen(BLACK);
+  display.setCursor(20, 5);
+  display.setTextColor(RED);
+  display.setTextSize(2);
+  display.print(buff);
 }
