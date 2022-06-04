@@ -318,9 +318,11 @@ void dispData(const float& mph, const float& rpm)
   display.setCursor(7, 5);
   display.setTextColor(WHITE);
   display.setTextSize(2);
+  display.print("MPH: ");
   display.print(int(mph + 0.5));
   display.setCursor(7, 25);
-  display.print(rpm);
+  display.print("RPM: ");
+  display.print(int(rpm));
 }
 
 

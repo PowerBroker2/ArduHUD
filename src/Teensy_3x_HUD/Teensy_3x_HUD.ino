@@ -5,11 +5,6 @@
 
 
 
-#define Serial Serial
-
-
-
-
 bool useSD   = false;
 bool useOLED = true;
 
