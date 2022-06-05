@@ -317,7 +317,7 @@ void dispData(const float& mph, const float& rpm)
   display.fillScreen(BLACK);
   display.setCursor(7, 5);
   display.setTextColor(WHITE);
-  display.setTextSize(2);
+  display.setTextSize(1);
   display.print("MPH: ");
   display.print(int(mph + 0.5));
   display.setCursor(7, 25);
